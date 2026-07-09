@@ -1,0 +1,118 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isFamilyMember(familyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid));
+    }
+
+    function isFamilyOwner(familyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)).data.role == "owner";
+    }
+
+    // ─── Users ────────────────────────────────────────────────────────────────
+
+    match /users/{userId} {
+      allow read, create, update: if isSelf(userId);
+      allow delete: if isSelf(userId);
+
+      // Mirror sub-collection: which families this user belongs to
+      match /families/{familyId} {
+        allow read, create, update, delete: if isSelf(userId);
+      }
+    }
+
+    // ─── Families ─────────────────────────────────────────────────────────────
+
+    match /families/{familyId} {
+      // Any signed-in user can create a family if they set themselves as creator
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid;
+
+      // Only members (or the creator before member doc is written) can read
+      allow read: if isFamilyMember(familyId)
+        || (signedIn() && resource.data.createdBy == request.auth.uid);
+
+      // Members can update family metadata (e.g. inviteCode regeneration)
+      allow update: if isFamilyMember(familyId);
+
+      // Only owner can delete the family
+      allow delete: if isFamilyOwner(familyId);
+
+      // ─── Members ──────────────────────────────────────────────────────────
+
+      match /members/{userId} {
+        // Any existing member can read the member list; the user themselves can read their own doc
+        allow read: if isFamilyMember(familyId) || isSelf(userId);
+
+        // A user can add themselves if:
+        //   a) they are the family creator (creating their owner doc in the same batch), OR
+        //   b) they present a valid, active invite code that points to this family
+        allow create: if signedIn()
+          && request.auth.uid == userId
+          && (
+            get(/databases/$(database)/documents/families/$(familyId)).data.createdBy == request.auth.uid
+            ||
+            (
+              request.resource.data.inviteCodeUsed is string
+              && exists(/databases/$(database)/documents/invites/$(request.resource.data.inviteCodeUsed))
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCodeUsed)).data.familyId == familyId
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCodeUsed)).data.active == true
+            )
+          );
+
+        // The member themselves or the owner can update (e.g. displayName sync)
+        allow update: if isSelf(userId) || isFamilyOwner(familyId);
+
+        // Only the owner can remove members
+        allow delete: if isFamilyOwner(familyId);
+      }
+
+      // ─── Shopping items ───────────────────────────────────────────────────
+
+      match /items/{itemId} {
+        allow read: if isFamilyMember(familyId);
+
+        // Members can create items; addedBy must match their own uid
+        allow create: if isFamilyMember(familyId)
+          && request.resource.data.addedBy == request.auth.uid;
+
+        // Any member can update (mark bought/unbought)
+        allow update: if isFamilyMember(familyId);
+
+        // Any member can delete individual items
+        allow delete: if isFamilyMember(familyId);
+      }
+    }
+
+    // ─── Invites ──────────────────────────────────────────────────────────────
+    // Document ID = the invite code itself
+
+    match /invites/{inviteCode} {
+      // Any signed-in user can read a single invite by its code (for join flow)
+      allow get: if signedIn();
+      // Listing all invites is forbidden
+      allow list: if false;
+
+      // Only the creator can create their own invite
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid;
+
+      // Only the creator can update or delete their invite
+      allow update, delete: if signedIn()
+        && resource.data.createdBy == request.auth.uid;
+    }
+  }
+}
