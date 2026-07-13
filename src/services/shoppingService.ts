@@ -88,6 +88,18 @@ export async function toggleItemBought(
   }
 }
 
+export async function updateShoppingItem(
+  familyId: string,
+  itemId: string,
+  data: { quantity: string; note: string }
+): Promise<void> {
+  await updateDoc(doc(db, 'families', familyId, 'items', itemId), {
+    quantity: data.quantity,
+    note: data.note,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function deleteShoppingItem(familyId: string, itemId: string): Promise<void> {
   await deleteDoc(doc(db, 'families', familyId, 'items', itemId));
 }

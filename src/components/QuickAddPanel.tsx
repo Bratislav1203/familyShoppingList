@@ -7,7 +7,6 @@ import type { ShoppingItem } from '../types';
 export interface QuickItem {
   name: string;
   defaultQuantity?: string;
-  quickQuantities: string[];
   emoji: string;
 }
 
@@ -63,15 +62,15 @@ export const CATEGORIES: Category[] = [
     label: 'Hrana',
     icon: icons.hrana,
     items: [
-      { name: 'Hleb', emoji: '🍞', quickQuantities: ['1', '2', '3'] },
-      { name: 'Jaja', emoji: '🥚', defaultQuantity: '12 kom', quickQuantities: ['6 kom', '12 kom', '18 kom'] },
-      { name: 'Jogurt', emoji: '🥛', quickQuantities: ['Mali', 'Veliki', '2x'] },
-      { name: 'Mleko', emoji: '🍼', defaultQuantity: '2l', quickQuantities: ['1l', '2l', '3l'] },
-      { name: 'Pavlaka', emoji: '🥄', quickQuantities: ['Mala', 'Velika', '2x'] },
-      { name: 'Kisela pavlaka', emoji: '🥄', quickQuantities: ['Mala', 'Velika', '2x'] },
-      { name: 'Kečap', emoji: '🍅', quickQuantities: ['Mali', 'Veliki'] },
-      { name: 'Čips', emoji: '🥔', quickQuantities: ['1', '2', '3'] },
-      { name: 'Pomfrit', emoji: '🍟', defaultQuantity: '750g', quickQuantities: ['500g', '750g', '1kg'] },
+      { name: 'Hleb', emoji: '🍞' },
+      { name: 'Jaja', emoji: '🥚', defaultQuantity: '12 kom' },
+      { name: 'Jogurt', emoji: '🥛' },
+      { name: 'Mleko', emoji: '🍼', defaultQuantity: '2l' },
+      { name: 'Pavlaka', emoji: '🥄' },
+      { name: 'Kisela pavlaka', emoji: '🥄' },
+      { name: 'Kečap', emoji: '🍅' },
+      { name: 'Čips', emoji: '🥔' },
+      { name: 'Pomfrit', emoji: '🍟', defaultQuantity: '750g' },
     ],
   },
   {
@@ -79,11 +78,11 @@ export const CATEGORIES: Category[] = [
     label: 'Meso',
     icon: icons.meso,
     items: [
-      { name: 'Pile', emoji: '🍗', defaultQuantity: '1kg', quickQuantities: ['500g', '1kg', '2kg'] },
-      { name: 'Mleveno meso', emoji: '🥩', defaultQuantity: '500g', quickQuantities: ['300g', '500g', '1kg'] },
-      { name: 'Svinjetina', emoji: '🥩', defaultQuantity: '1kg', quickQuantities: ['500g', '1kg', '2kg'] },
-      { name: 'Govedina', emoji: '🥩', defaultQuantity: '500g', quickQuantities: ['300g', '500g', '1kg'] },
-      { name: 'Pršuta', emoji: '🍖', quickQuantities: ['100g', '200g', '300g'] },
+      { name: 'Pile', emoji: '🍗', defaultQuantity: '1kg' },
+      { name: 'Mleveno meso', emoji: '🥩', defaultQuantity: '500g' },
+      { name: 'Svinjetina', emoji: '🥩', defaultQuantity: '1kg' },
+      { name: 'Govedina', emoji: '🥩', defaultQuantity: '500g' },
+      { name: 'Pršuta', emoji: '🍖' },
     ],
   },
   {
@@ -91,11 +90,11 @@ export const CATEGORIES: Category[] = [
     label: 'Voće & Povrće',
     icon: icons.voce,
     items: [
-      { name: 'Luk', emoji: '🧅', defaultQuantity: '1kg', quickQuantities: ['500g', '1kg', '2kg'] },
-      { name: 'Kupus', emoji: '🥬', quickQuantities: ['Mali', 'Veliki'] },
-      { name: 'Šargarepa', emoji: '🥕', defaultQuantity: '1kg', quickQuantities: ['500g', '1kg', '2kg'] },
-      { name: 'Krompir', emoji: '🥔', defaultQuantity: '2kg', quickQuantities: ['1kg', '2kg', '5kg'] },
-      { name: 'Banane', emoji: '🍌', defaultQuantity: '1kg', quickQuantities: ['500g', '1kg', '2kg'] },
+      { name: 'Luk', emoji: '🧅', defaultQuantity: '1kg' },
+      { name: 'Kupus', emoji: '🥬' },
+      { name: 'Šargarepa', emoji: '🥕', defaultQuantity: '1kg' },
+      { name: 'Krompir', emoji: '🥔', defaultQuantity: '2kg' },
+      { name: 'Banane', emoji: '🍌', defaultQuantity: '1kg' },
     ],
   },
   {
@@ -103,10 +102,10 @@ export const CATEGORIES: Category[] = [
     label: 'Piće',
     icon: icons.pice,
     items: [
-      { name: 'Pivo', emoji: '🍺', defaultQuantity: '6 kom', quickQuantities: ['2 kom', '4 kom', '6 kom', '12 kom'] },
-      { name: 'Sprite', emoji: '🥤', defaultQuantity: '1.5l', quickQuantities: ['0.5l', '1.5l', '2l'] },
-      { name: 'Džin', emoji: '🍸', quickQuantities: ['0.5l', '0.7l', '1l'] },
-      { name: 'Coca-Cola', emoji: '🥤', defaultQuantity: '1.5l', quickQuantities: ['0.5l', '1.5l', '2l'] },
+      { name: 'Pivo', emoji: '🍺', defaultQuantity: '6 kom' },
+      { name: 'Sprite', emoji: '🥤', defaultQuantity: '1.5l' },
+      { name: 'Džin', emoji: '🍸' },
+      { name: 'Coca-Cola', emoji: '🥤', defaultQuantity: '1.5l' },
     ],
   },
   {
@@ -114,19 +113,14 @@ export const CATEGORIES: Category[] = [
     label: 'Higijena',
     icon: icons.higijena,
     items: [
-      { name: 'Toalet papir', emoji: '🧻', defaultQuantity: '10 kom', quickQuantities: ['4 kom', '8 kom', '10 kom', '16 kom'] },
-      { name: 'Vlažne maramice', emoji: '🧴', defaultQuantity: '1 pak', quickQuantities: ['1 pak', '2 pak', '3 pak'] },
-      { name: 'Maramice', emoji: '🤧', quickQuantities: ['1 pak', '2 pak', '3 pak'] },
-      { name: 'Sapun', emoji: '🧼', quickQuantities: ['1', '2', '3'] },
-      { name: 'Papirni ubrusi', emoji: '🧻', quickQuantities: ['1 pak', '2 pak'] },
+      { name: 'Toalet papir', emoji: '🧻', defaultQuantity: '10 kom' },
+      { name: 'Vlažne maramice', emoji: '🧴', defaultQuantity: '1 pak' },
+      { name: 'Maramice', emoji: '🤧' },
+      { name: 'Sapun', emoji: '🧼' },
+      { name: 'Papirni ubrusi', emoji: '🧻' },
     ],
   },
 ];
-
-interface QuantityModalState {
-  item: QuickItem;
-  customQty: string;
-}
 
 interface QuickAddPanelProps {
   familyId: string;
@@ -142,7 +136,6 @@ export default function QuickAddPanel({
   currentItems,
 }: QuickAddPanelProps) {
   const [openCategory, setOpenCategory] = useState<Category | null>(null);
-  const [qtyModal, setQtyModal] = useState<QuantityModalState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   function findOnList(name: string): ShoppingItem | undefined {
@@ -151,39 +144,27 @@ export default function QuickAddPanel({
     );
   }
 
-  function handleItemClick(item: QuickItem) {
+  async function handleItemClick(item: QuickItem) {
     const existing = findOnList(item.name);
     if (existing) {
-      // already on list — remove
-      void doDelete(existing.id, item.name);
+      setBusy(item.name);
+      try {
+        await deleteShoppingItem(familyId, existing.id);
+      } finally {
+        setBusy(null);
+      }
     } else {
-      // not on list — open quantity picker
-      setQtyModal({ item, customQty: item.defaultQuantity ?? '' });
-    }
-  }
-
-  async function doDelete(itemId: string, name: string) {
-    setBusy(name);
-    try {
-      await deleteShoppingItem(familyId, itemId);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleAdd(quantity: string) {
-    if (!qtyModal) return;
-    setBusy(qtyModal.item.name);
-    try {
-      await addShoppingItem(
-        familyId,
-        { name: qtyModal.item.name, quantity, note: '' },
-        currentUser,
-        displayName
-      );
-      setQtyModal(null);
-    } finally {
-      setBusy(null);
+      setBusy(item.name);
+      try {
+        await addShoppingItem(
+          familyId,
+          { name: item.name, quantity: item.defaultQuantity ?? '', note: '' },
+          currentUser,
+          displayName
+        );
+      } finally {
+        setBusy(null);
+      }
     }
   }
 
@@ -204,7 +185,7 @@ export default function QuickAddPanel({
       </div>
 
       {/* Category modal */}
-      {openCategory && !qtyModal && createPortal(
+      {openCategory && createPortal(
         <div
           className="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center p-4"
           onClick={() => setOpenCategory(null)}
@@ -256,72 +237,6 @@ export default function QuickAddPanel({
                   </button>
                 );
               })}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Quantity picker modal */}
-      {qtyModal && createPortal(
-        <div
-          className="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center p-4"
-          onClick={() => setQtyModal(null)}
-        >
-          <div className="absolute inset-0 bg-black/60" />
-          <div
-            className="relative w-full max-w-xs bg-white rounded-2xl shadow-xl z-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-              <span className="text-2xl">{qtyModal.item.emoji}</span>
-              <h3 className="text-base font-bold text-gray-900">{qtyModal.item.name}</h3>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Quick quantity chips */}
-              <div className="flex flex-wrap gap-2">
-                {qtyModal.item.quickQuantities.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => setQtyModal((m) => m ? { ...m, customQty: q } : m)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
-                      qtyModal.customQty === q
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                    }`}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom input */}
-              <input
-                type="text"
-                value={qtyModal.customQty}
-                onChange={(e) => setQtyModal((m) => m ? { ...m, customQty: e.target.value } : m)}
-                placeholder="Upiši količinu..."
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-
-              {/* Buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setQtyModal(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Otkaži
-                </button>
-                <button
-                  onClick={() => handleAdd(qtyModal.customQty)}
-                  disabled={!!busy}
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold transition-colors"
-                >
-                  {busy ? '...' : 'Dodaj'}
-                </button>
-              </div>
             </div>
           </div>
         </div>,

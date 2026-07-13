@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useUserProfile } from '../hooks/useUserProfile';
-import { useUserFamilies } from '../hooks/useUserFamilies';
 import { joinFamilyByInviteCode, setActiveFamilyId } from '../services/familyService';
 import LoadingScreen from '../components/LoadingScreen';
 import Onboarding from '../components/Onboarding';
@@ -14,9 +13,9 @@ export default function JoinPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useUserProfile(user?.uid ?? null);
-  const { loading: familiesLoading } = useUserFamilies(user?.uid ?? null);
   const [status, setStatus] = useState<'idle' | 'joining' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const didJoin = useRef(false);
 
   // Save invite code for after onboarding
   useEffect(() => {
@@ -26,8 +25,9 @@ export default function JoinPage() {
   }, [inviteCode]);
 
   useEffect(() => {
-    if (authLoading || profileLoading || familiesLoading) return;
+    if (authLoading || profileLoading) return;
     if (!user || !profile?.displayName) return;
+    if (didJoin.current) return;
 
     const code = inviteCode ?? localStorage.getItem(PENDING_INVITE_KEY);
     if (!code) {
@@ -35,13 +35,13 @@ export default function JoinPage() {
       return;
     }
 
-    // joinFamilyByInviteCode handles already-member case gracefully
+    didJoin.current = true;
     void doJoin(code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, profileLoading, familiesLoading, user, profile]);
+  }, [authLoading, profileLoading, user, profile]);
 
   async function doJoin(code: string) {
-    if (!user || !profile?.displayName || status === 'joining') return;
+    if (!user || !profile?.displayName) return;
     setStatus('joining');
     try {
       const familyId = await joinFamilyByInviteCode(code, user, profile.displayName);
@@ -52,23 +52,22 @@ export default function JoinPage() {
       const msg = err instanceof Error ? err.message : 'Došlo je do greške, pokušaj ponovo';
       setErrorMsg(msg);
       setStatus('error');
+      didJoin.current = false;
     }
   }
 
-  if (authLoading || profileLoading || familiesLoading || status === 'joining') {
+  if (authLoading || profileLoading || status === 'joining') {
     return <LoadingScreen message="Pridružujem te porodici..." />;
   }
 
   if (!user) return <LoadingScreen />;
 
-  // Need onboarding first
+  // Need onboarding first — profile listener will update and trigger join via useEffect
   if (!profile?.displayName) {
     return (
       <Onboarding
         uid={user.uid}
-        onComplete={() => {
-          // profile listener updates, useEffect will trigger join
-        }}
+        onComplete={() => {/* profile listener updates, useEffect will trigger join */}}
       />
     );
   }
