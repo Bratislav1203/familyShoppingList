@@ -35,38 +35,36 @@ function DealCard({ deal, familyId }: { deal: Deal; familyId: string }) {
   const discount = deal.discount != null ? Number(deal.discount) : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
+    <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 space-y-1.5">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 text-sm">{deal.itemName}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{deal.store}</p>
-        </div>
+        <p className="text-sm text-gray-700 font-medium flex-1 min-w-0">{deal.itemName}</p>
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
+          className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         </button>
       </div>
 
       <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="text-xl font-bold text-green-600">{deal.price} RSD</span>
+        <span className="text-lg font-bold text-green-600">{deal.price} RSD</span>
         {deal.regularPrice != null && (
-          <span className="text-sm text-gray-400 line-through">{deal.regularPrice} RSD</span>
+          <span className="text-xs text-gray-400 line-through">{deal.regularPrice} RSD</span>
         )}
         {discount != null && (
-          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+          <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-medium">
             -{discount}%
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-3 flex-wrap text-xs text-gray-400">
+        <span>{deal.store}</span>
         {deal.validUntil && <span>Važi do: {deal.validUntil}</span>}
-        {deal.foundAt != null && <span>Pronađeno: {formatDate(deal.foundAt)}</span>}
+        {deal.foundAt != null && <span>{formatDate(deal.foundAt)}</span>}
         {deal.sourceUrl && (
           <a
             href={deal.sourceUrl}
@@ -78,6 +76,47 @@ function DealCard({ deal, familyId }: { deal: Deal; familyId: string }) {
           </a>
         )}
       </div>
+    </div>
+  );
+}
+
+function DealGroup({ groupName, deals, familyId }: { groupName: string; deals: Deal[]; familyId: string }) {
+  const [expanded, setExpanded] = useState(true);
+  const best = deals.reduce((a, b) => a.price < b.price ? a : b);
+  const discount = best.discount != null ? Number(best.discount) : null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="text-left min-w-0">
+            <p className="font-semibold text-gray-900 text-sm truncate">{groupName}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {deals.length} {deals.length === 1 ? 'ponuda' : 'ponude'} · od {best.price} RSD
+              {discount != null && (
+                <span className="ml-1.5 text-orange-600 font-medium">-{discount}%</span>
+              )}
+            </p>
+          </div>
+        </div>
+        <svg
+          className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2">
+          {deals.map((deal) => (
+            <DealCard key={deal.id} deal={deal} familyId={familyId} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -95,6 +134,19 @@ export default function DealsPage({ familyId }: DealsPageProps) {
       setClearingAll(false);
     }
   }
+
+  // Group by watchlistItemId, use first deal's itemName as group label
+  const groups = deals.reduce<Record<string, Deal[]>>((acc, deal) => {
+    const key = deal.watchlistItemId;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(deal);
+    return acc;
+  }, {});
+
+  const groupEntries = Object.entries(groups).map(([, items]) => ({
+    name: items[0].groupName ?? items[0].itemName,
+    deals: items,
+  }));
 
   return (
     <div className="space-y-4">
@@ -130,8 +182,8 @@ export default function DealsPage({ familyId }: DealsPageProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {deals.map((deal) => (
-            <DealCard key={deal.id} deal={deal} familyId={familyId} />
+          {groupEntries.map((group) => (
+            <DealGroup key={group.deals[0].watchlistItemId} groupName={group.name} deals={group.deals} familyId={familyId} />
           ))}
         </div>
       )}

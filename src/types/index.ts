@@ -86,6 +86,7 @@ export interface Deal {
   id: string;
   watchlistItemId: string;
   itemName: string;
+  groupName?: string;
   store: string;
   price: number;
   regularPrice?: number | null;

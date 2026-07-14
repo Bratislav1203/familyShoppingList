@@ -1,11 +1,26 @@
 import { google } from 'googleapis';
 import admin from 'firebase-admin';
+import fetch from 'node-fetch';
 
 // ─── Firebase init ────────────────────────────────────────────────────────────
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
+
+const RTDB_URL = `https://family-shopping-list-ed1d8-default-rtdb.europe-west1.firebasedatabase.app/watchlists/${process.env.RTDB_TOKEN}.json`;
+
+async function loadItemNames() {
+  const res = await fetch(RTDB_URL);
+  const data = await res.json();
+  const map = {};
+  if (data?.items) {
+    for (const item of data.items) {
+      map[item.id] = item.name;
+    }
+  }
+  return map;
+}
 
 // ─── Gmail OAuth2 client ──────────────────────────────────────────────────────
 
@@ -162,13 +177,16 @@ async function main() {
   const entries = parseDeals(body);
   console.log(`Pronađeno ${entries.length} ponuda`);
 
+  const itemNames = await loadItemNames();
+
   if (entries.length > 0) {
     await clearDeals(entries[0].familyId);
   }
 
   for (const { familyId, deal } of entries) {
     try {
-      await saveDeal(familyId, deal);
+      const groupName = itemNames[deal.watchlistItemId] ?? deal.itemName;
+      await saveDeal(familyId, { ...deal, groupName });
     } catch (err) {
       console.log(`  Greška pri upisu: ${err.message}`);
     }
