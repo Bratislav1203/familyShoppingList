@@ -10,6 +10,10 @@ import FamilySetup from './components/FamilySetup';
 import FamilyPage from './pages/FamilyPage';
 import FamiliesPage from './pages/FamiliesPage';
 import JoinPage from './pages/JoinPage';
+import WatchlistRoutePage from './pages/WatchlistRoutePage';
+import DealsRoutePage from './pages/DealsRoutePage';
+import PublicWatchlistPage from './pages/PublicWatchlistPage';
+import PublicDealPage from './pages/PublicDealPage';
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -100,6 +104,24 @@ function AppRoutes() {
       <Route path="/families" element={<FamiliesPage />} />
       <Route path="/join/:inviteCode" element={<JoinPage />} />
       <Route
+        path="/family/:familyId/watchlist"
+        element={
+          <WatchlistRoutePage
+            globalActiveFamilyId={activeFamilyId}
+            setGlobalActiveFamilyId={setActiveFamilyIdState}
+          />
+        }
+      />
+      <Route
+        path="/family/:familyId/deals"
+        element={
+          <DealsRoutePage
+            globalActiveFamilyId={activeFamilyId}
+            setGlobalActiveFamilyId={setActiveFamilyIdState}
+          />
+        }
+      />
+      <Route
         path="/family/:familyId"
         element={
           <FamilyPage
@@ -115,7 +137,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <Routes>
+        <Route path="/watchlist/:token" element={<PublicWatchlistPage />} />
+        <Route path="/deal" element={<PublicDealPage />} />
+        <Route path="/*" element={<AppRoutes />} />
+      </Routes>
     </BrowserRouter>
   );
 }

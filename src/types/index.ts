@@ -54,3 +54,43 @@ export interface Invite {
   createdBy: string;
   createdAt?: unknown;
 }
+
+export interface Watchlist {
+  id: string;
+  name: string;
+  enabled: boolean;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export type CriteriaMode = 'ANY' | 'ALL';
+
+export interface WatchlistItem {
+  id: string;
+  name: string;
+  brand?: string;
+  variant?: string;
+  packageSize?: string;
+  enabled: boolean;
+  maxPrice?: number | null;
+  minimumDiscountPercent?: number | null;
+  criteriaMode: CriteriaMode;
+  includeTerms?: string[];
+  excludeTerms?: string[];
+  notes?: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export interface Deal {
+  id: string;
+  watchlistItemId: string;
+  itemName: string;
+  store: string;
+  price: number;
+  regularPrice?: number | null;
+  discount?: number | null;
+  validUntil?: string | null;
+  sourceUrl?: string | null;
+  foundAt?: unknown;
+}

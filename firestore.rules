@@ -41,9 +41,10 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid;
 
-      // Only members (or the creator before member doc is written) can read
+      // Members can read; public can query by watchlistToken (for public watchlist page)
       allow read: if isFamilyMember(familyId)
-        || (signedIn() && resource.data.createdBy == request.auth.uid);
+        || (signedIn() && resource.data.createdBy == request.auth.uid)
+        || resource.data.watchlistToken != null;
 
       // Members can update family metadata (e.g. inviteCode regeneration)
       allow update: if isFamilyMember(familyId);
@@ -94,6 +95,28 @@ service cloud.firestore {
 
         // Any member can delete individual items
         allow delete: if isFamilyMember(familyId);
+      }
+
+      // ─── Watchlists ───────────────────────────────────────────────────────
+
+      match /watchlists/{watchlistId} {
+        // Members can read/write; public can read (for public watchlist page)
+        allow read: if isFamilyMember(familyId) || true;
+        allow write: if isFamilyMember(familyId);
+
+        match /items/{itemId} {
+          allow read: if isFamilyMember(familyId) || true;
+          allow write: if isFamilyMember(familyId);
+        }
+      }
+
+      // ─── Deals ────────────────────────────────────────────────────────────
+
+      match /deals/{dealId} {
+        allow read, delete: if isFamilyMember(familyId);
+        // Javno kreiranje — ChatGPT upisuje ponude direktno
+        allow create: if true;
+        allow update: if false;
       }
     }
 
