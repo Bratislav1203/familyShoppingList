@@ -126,6 +126,16 @@ function parseDeals(body) {
   return deals;
 }
 
+// ─── Clear existing deals ─────────────────────────────────────────────────────
+
+async function clearDeals(familyId) {
+  const snap = await db.collection('families').doc(familyId).collection('deals').get();
+  const batch = db.batch();
+  snap.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+  console.log(`Obrisano ${snap.size} starih ponuda.`);
+}
+
 // ─── Save deals to Firestore ──────────────────────────────────────────────────
 
 async function saveDeal(familyId, deal) {
@@ -151,6 +161,10 @@ async function main() {
 
   const entries = parseDeals(body);
   console.log(`Pronađeno ${entries.length} ponuda`);
+
+  if (entries.length > 0) {
+    await clearDeals(entries[0].familyId);
+  }
 
   for (const { familyId, deal } of entries) {
     try {
