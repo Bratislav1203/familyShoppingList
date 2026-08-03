@@ -19,11 +19,13 @@ export default function ShoppingItemRow({
   displayName,
 }: ShoppingItemRowProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const [recipeOpen, setRecipeOpen] = useState(false);
   const [quantity, setQuantity] = useState(item.quantity);
   const [note, setNote] = useState(item.note ?? '');
   const [saving, setSaving] = useState(false);
 
-  const emoji = getItemEmoji(item.name);
+  const isRecipe = !!(item.recipeIngredients && item.recipeIngredients.length > 0);
+  const emoji = isRecipe ? '🍳' : getItemEmoji(item.name);
 
   async function handleToggle() {
     await toggleItemBought(familyId, item, currentUser, displayName);
@@ -34,9 +36,13 @@ export default function ShoppingItemRow({
   }
 
   function openEdit() {
-    setQuantity(item.quantity);
-    setNote(item.note ?? '');
-    setEditOpen(true);
+    if (isRecipe) {
+      setRecipeOpen(true);
+    } else {
+      setQuantity(item.quantity);
+      setNote(item.note ?? '');
+      setEditOpen(true);
+    }
   }
 
   async function handleSave() {
@@ -55,6 +61,8 @@ export default function ShoppingItemRow({
         className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition-all ${
           item.bought
             ? 'bg-gray-50 border-gray-100 opacity-60'
+            : isRecipe
+            ? 'bg-orange-50 border-orange-100 shadow-sm'
             : 'bg-white border-gray-100 shadow-sm'
         }`}
       >
@@ -75,7 +83,7 @@ export default function ShoppingItemRow({
           )}
         </button>
 
-        {/* Clickable middle — emoji + content */}
+        {/* Clickable middle */}
         <button
           onClick={openEdit}
           className="flex-1 min-w-0 flex items-center gap-2.5 text-left"
@@ -86,13 +94,18 @@ export default function ShoppingItemRow({
               <span className={`font-medium text-base ${item.bought ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                 {item.name}
               </span>
-              {item.quantity && (
+              {isRecipe && (
+                <span className="text-xs text-orange-500 font-medium">
+                  {item.recipeIngredients!.length} sastojaka →
+                </span>
+              )}
+              {!isRecipe && item.quantity && (
                 <span className={`text-sm ${item.bought ? 'text-gray-400' : 'text-gray-500'}`}>
                   — {item.quantity}
                 </span>
               )}
             </div>
-            {item.note && (
+            {item.note && !isRecipe && (
               <p className="text-xs text-gray-400 mt-0.5 italic">{item.note}</p>
             )}
             <div className="flex flex-wrap gap-x-3 mt-0.5">
@@ -116,8 +129,46 @@ export default function ShoppingItemRow({
         </button>
       </div>
 
-      {/* Edit modal */}
-      {editOpen && createPortal(
+      {/* Recipe modal */}
+      {recipeOpen && isRecipe && createPortal(
+        <div
+          className="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-end justify-center"
+          onClick={() => setRecipeOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative w-full max-w-lg bg-white rounded-t-2xl shadow-xl z-10 max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🍳</span>
+                <h3 className="text-base font-bold text-gray-900">{item.name}</h3>
+              </div>
+              <button
+                onClick={() => setRecipeOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
+              >
+                ×
+              </button>
+            </div>
+            <div className="overflow-y-auto divide-y divide-gray-50">
+              {item.recipeIngredients!.map((ing, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-2.5">
+                  <span className="text-sm text-gray-800">{ing.name}</span>
+                  <span className="text-sm text-gray-400">
+                    {ing.quantity ? `${ing.quantity} ${ing.unit}` : ing.unit}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Edit modal (samo za ne-recept stavke) */}
+      {editOpen && !isRecipe && createPortal(
         <div
           className="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center p-4"
           onClick={() => setEditOpen(false)}

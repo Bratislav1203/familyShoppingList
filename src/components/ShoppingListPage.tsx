@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getFamily } from '../services/familyService';
-import { clearBoughtItems } from '../services/shoppingService';
+import { clearBoughtItems, addRecipeItem } from '../services/shoppingService';
 import { useShoppingItems } from '../hooks/useShoppingItems';
 import type { User } from 'firebase/auth';
-import type { Family } from '../types';
+import type { Family, RecipeIngredient } from '../types';
 import AddItemForm from './AddItemForm';
 import QuickAddPanel from './QuickAddPanel';
 import ShoppingItemRow from './ShoppingItemRow';
@@ -30,6 +30,10 @@ export default function ShoppingListPage({
   const [clearing, setClearing] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showRecipeImport, setShowRecipeImport] = useState(false);
+  const [recipeJson, setRecipeJson] = useState('');
+  const [importingRecipe, setImportingRecipe] = useState(false);
+  const [recipeResult, setRecipeResult] = useState<string | null>(null);
 
   const { items, loading: itemsLoading } = useShoppingItems(familyId);
 
@@ -45,6 +49,29 @@ export default function ShoppingListPage({
       })
       .finally(() => setFamilyLoading(false));
   }, [familyId, navigate]);
+
+  async function handleRecipeImport() {
+    if (!recipeJson.trim()) return;
+    setImportingRecipe(true);
+    setRecipeResult(null);
+    try {
+      const data = JSON.parse(recipeJson);
+      if (!data.meal?.name) throw new Error('Neispravan format');
+      const ings: RecipeIngredient[] = (data.ingredients ?? []).map((ing: { name: string; quantity: number | null; unit: string }) => ({
+        name: ing.name,
+        quantity: ing.quantity ?? null,
+        unit: ing.unit ?? '',
+      }));
+      await addRecipeItem(familyId, data.meal.name, ings, currentUser, displayName);
+      setRecipeResult(`✓ "${data.meal.name}" dodano na listu!`);
+      setRecipeJson('');
+      setTimeout(() => { setShowRecipeImport(false); setRecipeResult(null); }, 2000);
+    } catch {
+      setRecipeResult('Neispravan JSON — kopiraj iz KuvaJ app');
+    } finally {
+      setImportingRecipe(false);
+    }
+  }
 
   async function handleClearBought() {
     const boughtCount = items.filter((i) => i.bought).length;
@@ -87,7 +114,50 @@ export default function ShoppingListPage({
         >
           🍳
         </button>
+        <button
+          onClick={() => { setShowRecipeImport(s => !s); setRecipeResult(null); }}
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
+            showRecipeImport ? 'bg-orange-100 text-orange-700' : 'bg-orange-50 hover:bg-orange-100 text-orange-600'
+          }`}
+          title="Uvezi recept iz KuvaJ"
+        >
+          📋
+        </button>
       </div>
+
+      {/* Recipe import panel */}
+      {showRecipeImport && (
+        <div className="bg-orange-50 rounded-xl border border-orange-100 p-4 space-y-3">
+          <p className="text-xs text-orange-700 font-medium">Nalepi JSON iz KuvaJ app (Kopiraj JSON na jelu):</p>
+          <textarea
+            value={recipeJson}
+            onChange={e => setRecipeJson(e.target.value)}
+            placeholder='{ "meal": { "name": "..." }, "ingredients": [...] }'
+            rows={4}
+            className="w-full px-3 py-2 rounded-lg border border-orange-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-white"
+          />
+          {recipeResult && (
+            <p className={`text-sm font-medium ${recipeResult.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
+              {recipeResult}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowRecipeImport(false); setRecipeJson(''); setRecipeResult(null); }}
+              className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-500"
+            >
+              Otkaži
+            </button>
+            <button
+              onClick={handleRecipeImport}
+              disabled={importingRecipe || !recipeJson.trim()}
+              className="flex-1 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:bg-orange-200 text-white text-sm font-medium"
+            >
+              {importingRecipe ? 'Dodajem...' : 'Dodaj na listu'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Invite box */}
       {showInvite && family && <InviteBox inviteCode={family.inviteCode} />}

@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../lib/firebase';
-import type { ShoppingItem } from '../types';
+import type { ShoppingItem, RecipeIngredient } from '../types';
 
 export function listenShoppingItems(
   familyId: string,
@@ -102,6 +102,29 @@ export async function updateShoppingItem(
 
 export async function deleteShoppingItem(familyId: string, itemId: string): Promise<void> {
   await deleteDoc(doc(db, 'families', familyId, 'items', itemId));
+}
+
+export async function addRecipeItem(
+  familyId: string,
+  mealName: string,
+  ingredients: RecipeIngredient[],
+  currentUser: User,
+  displayName: string
+): Promise<void> {
+  await addDoc(collection(db, 'families', familyId, 'items'), {
+    name: mealName,
+    quantity: '',
+    note: '',
+    bought: false,
+    addedBy: currentUser.uid,
+    addedByName: displayName,
+    boughtBy: null,
+    boughtByName: null,
+    boughtAt: null,
+    recipeIngredients: ingredients,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function clearBoughtItems(familyId: string): Promise<void> {

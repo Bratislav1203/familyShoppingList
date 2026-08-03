@@ -31,6 +31,12 @@ export interface FamilyMember {
   inviteCodeUsed?: string;
 }
 
+export interface RecipeIngredient {
+  name: string;
+  quantity: number | null;
+  unit: string;
+}
+
 export interface ShoppingItem {
   id: string;
   name: string;
@@ -41,6 +47,7 @@ export interface ShoppingItem {
   addedByName: string;
   boughtBy: string | null;
   boughtByName: string | null;
+  recipeIngredients?: RecipeIngredient[];
   createdAt?: unknown;
   updatedAt?: unknown;
   boughtAt?: unknown | null;
