@@ -4,11 +4,13 @@ import {
   onSnapshot,
   collection,
   writeBatch,
+  updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../lib/firebase';
 import { generateInviteCode } from '../utils/generateInviteCode';
+import { generateToken } from '../utils/generateToken';
 import type { Family, UserFamily, FamilyMember } from '../types';
 
 const ACTIVE_FAMILY_KEY = 'activeFamilyId';
@@ -163,4 +165,20 @@ export async function regenerateInviteCode(familyId: string, createdBy: string):
   });
   await batch.commit();
   return newCode;
+}
+
+export async function getOrCreateShoppingApiKey(familyId: string): Promise<string> {
+  const snap = await getDoc(doc(db, 'families', familyId));
+  if (!snap.exists()) throw new Error('Porodica nije pronađena');
+  const existing = snap.data().shoppingApiKey as string | undefined;
+  if (existing) return existing;
+  const key = generateToken(16);
+  await updateDoc(doc(db, 'families', familyId), { shoppingApiKey: key, updatedAt: serverTimestamp() });
+  return key;
+}
+
+export async function regenerateShoppingApiKey(familyId: string): Promise<string> {
+  const key = generateToken(16);
+  await updateDoc(doc(db, 'families', familyId), { shoppingApiKey: key, updatedAt: serverTimestamp() });
+  return key;
 }

@@ -42,9 +42,11 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid;
 
       // Members can read; public can query by watchlistToken (for public watchlist page)
+      // list dozvola potrebna za KuvaJ query po shoppingApiKey
       allow read: if isFamilyMember(familyId)
         || (signedIn() && resource.data.createdBy == request.auth.uid)
         || resource.data.watchlistToken != null;
+      allow list: if true;
 
       // Members can update family metadata (e.g. inviteCode regeneration)
       allow update: if isFamilyMember(familyId);
@@ -86,9 +88,10 @@ service cloud.firestore {
       match /items/{itemId} {
         allow read: if isFamilyMember(familyId);
 
-        // Members can create items; addedBy must match their own uid
+        // Članovi mogu dodavati stavke; KuvaJ dodaje sa addedBy='kuvaj'
         allow create: if isFamilyMember(familyId)
-          && request.resource.data.addedBy == request.auth.uid;
+          && request.resource.data.addedBy == request.auth.uid
+          || request.resource.data.addedBy == 'kuvaj';
 
         // Any member can update (mark bought/unbought)
         allow update: if isFamilyMember(familyId);

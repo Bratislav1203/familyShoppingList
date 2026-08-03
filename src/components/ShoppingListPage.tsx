@@ -9,6 +9,7 @@ import AddItemForm from './AddItemForm';
 import QuickAddPanel from './QuickAddPanel';
 import ShoppingItemRow from './ShoppingItemRow';
 import InviteBox from './InviteBox';
+import ShoppingApiKeyBox from './ShoppingApiKeyBox';
 import EmptyState from './EmptyState';
 import LoadingScreen from './LoadingScreen';
 
@@ -28,6 +29,7 @@ export default function ShoppingListPage({
   const [familyLoading, setFamilyLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const { items, loading: itemsLoading } = useShoppingItems(familyId);
 
@@ -78,10 +80,20 @@ export default function ShoppingListPage({
           </svg>
           Dodaj člana
         </button>
+        <button
+          onClick={() => setShowApiKey((s) => !s)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium rounded-xl transition-colors"
+          title="KuvaJ integracija"
+        >
+          🍳
+        </button>
       </div>
 
       {/* Invite box */}
       {showInvite && family && <InviteBox inviteCode={family.inviteCode} />}
+
+      {/* KuvaJ API key box */}
+      {showApiKey && <ShoppingApiKeyBox familyId={familyId} />}
 
       {/* Add item form */}
       <AddItemForm familyId={familyId} currentUser={currentUser} displayName={displayName} />
