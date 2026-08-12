@@ -12,8 +12,24 @@ const db = admin.firestore();
 
 const RTDB_URL = `https://family-shopping-list-ed1d8-default-rtdb.europe-west1.firebasedatabase.app/watchlists/${process.env.RTDB_TOKEN}.json`;
 
+async function fetchWithRetry(url, options = {}, retries = 4, baseDelay = 3000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      const isLast = attempt === retries;
+      console.log(`  Fetch pokušaj ${attempt}/${retries} neuspešan: ${err.message}`);
+      if (isLast) throw err;
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.log(`  Čekam ${delay / 1000}s pre ponovnog pokušaja...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+
 async function loadWatchlist() {
-  const res = await fetch(RTDB_URL);
+  const res = await fetchWithRetry(RTDB_URL);
   const data = await res.json();
   if (!data || !data.items || data.totalItems === 0) {
     console.log('Watchlist je prazna, nema šta da se proverava.');
@@ -32,7 +48,7 @@ async function searchCenoteka(item) {
   const url = `https://cenoteka.rs/pretraga?q=${encodeURIComponent(query)}`;
   console.log(`Tražim: ${query}`);
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
