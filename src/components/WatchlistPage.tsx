@@ -48,6 +48,9 @@ export default function WatchlistPage({ familyId }: WatchlistPageProps) {
       await createWatchlist(familyId, name);
       setNewListName('');
       setCreatingList(false);
+    } catch (err) {
+      console.error('createWatchlist failed:', err);
+      alert(`Greška pri pravljenju liste: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSaving(false);
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDeals } from '../hooks/useDeals';
 import { deleteAllDeals } from '../services/dealService';
 import type { Deal } from '../types';
@@ -181,6 +181,38 @@ export default function DealsPage({ familyId }: DealsPageProps) {
   const { deals, loading } = useDeals(familyId);
   const [clearingAll, setClearingAll] = useState(false);
 
+  const storageKey = `dealsHiddenStores:${familyId}`;
+  const [hiddenStores, setHiddenStores] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      return raw ? new Set<string>(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  function toggleStore(store: string) {
+    setHiddenStores((prev) => {
+      const next = new Set(prev);
+      if (next.has(store)) next.delete(store);
+      else next.add(store);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
+  // Sve prodavnice koje se pojavljuju u trenutnim ponudama (za dugmiće filtera).
+  const allStores = useMemo(
+    () => [...new Set(deals.map((d) => d.store).filter(Boolean))].sort(),
+    [deals]
+  );
+
+  const visibleDeals = deals.filter((d) => !hiddenStores.has(d.store));
+
   async function handleClearAll() {
     if (!window.confirm(`Obrisati svih ${deals.length} ponuda?`)) return;
     setClearingAll(true);
@@ -191,7 +223,7 @@ export default function DealsPage({ familyId }: DealsPageProps) {
     }
   }
 
-  const groups = deals.reduce<Record<string, Deal[]>>((acc, deal) => {
+  const groups = visibleDeals.reduce<Record<string, Deal[]>>((acc, deal) => {
     const key = deal.watchlistItemId;
     if (!acc[key]) acc[key] = [];
     acc[key].push(deal);
@@ -223,6 +255,28 @@ export default function DealsPage({ familyId }: DealsPageProps) {
         )}
       </div>
 
+      {/* Filter po prodavnici */}
+      {allStores.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {allStores.map((store) => {
+            const active = !hiddenStores.has(store);
+            return (
+              <button
+                key={store}
+                onClick={() => toggleStore(store)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                  active
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'bg-gray-50 border-gray-200 text-gray-400 line-through'
+                }`}
+              >
+                {store}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -234,6 +288,11 @@ export default function DealsPage({ familyId }: DealsPageProps) {
           </svg>
           <p className="text-sm font-medium">Još nema pronađenih ponuda</p>
           <p className="text-xs mt-1">Dnevni job će ih dodati kada pronađe cene</p>
+        </div>
+      ) : groupEntries.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <p className="text-sm font-medium">Nema ponuda za odabrane prodavnice</p>
+          <p className="text-xs mt-1">Uključi neku prodavnicu iznad</p>
         </div>
       ) : (
         <div className="space-y-3">
