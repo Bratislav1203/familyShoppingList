@@ -16,35 +16,23 @@ const REPO_ROOT = join(__dirname, '..', '..');
 
 // ─── Firebase init ──────────────────────────────────────────────────────────
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
-
 const RTDB_BASE = 'https://family-shopping-list-ed1d8-default-rtdb.europe-west1.firebasedatabase.app';
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: RTDB_BASE,
+});
+const db = admin.firestore();
+const rtdb = admin.database();
 
 // Prazno = daily (sve porodice); postavljeno = ručno pokretanje za jednu porodicu.
 const FAMILY_ID_FILTER = (process.env.FAMILY_ID_FILTER || '').trim() || null;
 
-// ─── Retry (za RTDB/network) ──────────────────────────────────────────────────
-
-async function fetchWithRetry(url, options = {}, retries = 4, baseDelay = 3000) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return await fetch(url, options);
-    } catch (err) {
-      console.log(`  Fetch pokušaj ${attempt}/${retries} neuspešan: ${err.message}`);
-      if (attempt === retries) throw err;
-      const delay = baseDelay * Math.pow(2, attempt - 1);
-      console.log(`  Čekam ${delay / 1000}s pre ponovnog pokušaja...`);
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
-}
-
 async function loadWatchlists() {
-  // Čitaj ceo watchlists/ node — { token: snapshot, ... }.
-  const res = await fetchWithRetry(`${RTDB_BASE}/watchlists.json`);
-  const data = await res.json();
+  // Čitaj ceo watchlists/ node preko admin SDK-a (zaobilazi RTDB pravila).
+  const snap = await rtdb.ref('watchlists').get();
+  const data = snap.val();
   if (!data || typeof data !== 'object') {
     console.log('Nema nijedne watchliste u RTDB.');
     process.exit(0);
