@@ -211,7 +211,9 @@ async function main() {
   // 3) Za svaki (porodica, item) sastavi ponude, matchuj, upiši.
   let totalSaved = 0;
   for (const { familyId, itemId, item, eans } of plan) {
-    const deals = [];
+    // Najjeftinija ponuda po prodavnici (isti EAN se u cenovniku javlja
+    // više puta — po objektu/formatu prodavnice; nama treba jedna po lancu).
+    const bestByStore = new Map(); // store -> deal
 
     for (const [ean, product] of eans) {
       const priceRows = pricesByEan.get(ean) || [];
@@ -226,7 +228,7 @@ async function main() {
         if (!offer) continue;
         if (!matchesItem(offer, productName, item)) continue;
 
-        deals.push({
+        const deal = {
           catalogEan: ean,
           itemName: productName,
           groupName: item.name,
@@ -240,9 +242,14 @@ async function main() {
           unitPrice: offer.unitPrice,
           unitPriceUnit: offer.unitPriceUnit,
           validUntil: offer.validUntil,
-        });
+        };
+
+        const prev = bestByStore.get(offer.store);
+        if (!prev || deal.price < prev.price) bestByStore.set(offer.store, deal);
       }
     }
+
+    const deals = [...bestByStore.values()];
 
     // Očisti undefined vrednosti (Firestore ih ne prima).
     const clean = deals.map((d) =>
