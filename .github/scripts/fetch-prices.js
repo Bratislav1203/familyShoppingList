@@ -215,6 +215,11 @@ async function main() {
     // više puta — po objektu/formatu prodavnice; nama treba jedna po lancu).
     const bestByStore = new Map(); // store -> deal
 
+    const eansWithPrice = [...eans.keys()].filter((e) => (pricesByEan.get(e) || []).length > 0);
+    console.log(
+      `  → ${item.name} [${item.watchType || 'EXACT'}]: ${eans.size} EAN, ${eansWithPrice.length} sa cenom`
+    );
+
     for (const [ean, product] of eans) {
       const priceRows = pricesByEan.get(ean) || [];
       for (const row of priceRows) {
