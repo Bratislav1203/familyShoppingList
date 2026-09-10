@@ -264,7 +264,9 @@ async function main() {
   console.log(`\nUkupno upisano: ${totalSaved} ponuda (run ${fetchRunId})`);
 }
 
-main().catch((err) => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
