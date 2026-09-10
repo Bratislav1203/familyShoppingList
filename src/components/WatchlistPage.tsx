@@ -1,12 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useWatchlists } from '../hooks/useWatchlists';
-import { createWatchlist, ensureWatchlistToken, regenerateWatchlistToken } from '../services/watchlistService';
+import {
+  createWatchlist,
+  createWatchlistItem,
+  type WatchlistItemInput,
+} from '../services/watchlistService';
 import { publishWatchlistSnapshot } from '../services/rtdbSyncService';
+import { triggerPriceRefresh, priceRefreshEnabled } from '../services/priceRefreshService';
+import { normalize } from '../services/catalogService';
 import WatchlistCard from './WatchlistCard';
-import { copyToClipboard } from '../utils/clipboard';
+import CatalogSearch from './CatalogSearch';
+import type { CatalogProduct } from '../types';
 
 interface WatchlistPageProps {
   familyId: string;
+}
+
+const DEFAULT_LIST_NAME = 'Moji proizvodi';
+
+function pkgLabel(p: CatalogProduct): string {
+  if (p.packageValue != null && p.packageUnit) return `${p.packageValue} ${p.packageUnit}`;
+  if (p.packageUnit) return p.packageUnit;
+  return '';
 }
 
 export default function WatchlistPage({ familyId }: WatchlistPageProps) {
@@ -14,27 +29,15 @@ export default function WatchlistPage({ familyId }: WatchlistPageProps) {
   const [creatingList, setCreatingList] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [saving, setSaving] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [tokenLoading, setTokenLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
+  const [addMsg, setAddMsg] = useState<string | null>(null);
 
-  // Keep token in a ref so the sync effect can read the latest value
-  const tokenRef = useRef<string | null>(null);
-  tokenRef.current = token;
-
+  // Sync to RTDB whenever watchlists change (keyed by familyId).
   useEffect(() => {
-    setTokenLoading(true);
-    ensureWatchlistToken(familyId)
-      .then(setToken)
-      .finally(() => setTokenLoading(false));
-  }, [familyId]);
-
-  // Sync to RTDB whenever watchlists change and token is ready
-  useEffect(() => {
-    if (!token || loading) return;
-    publishWatchlistSnapshot(familyId, token).catch(console.error);
-  }, [watchlists, token, loading, familyId]);
+    if (loading) return;
+    publishWatchlistSnapshot(familyId).catch(console.error);
+  }, [watchlists, loading, familyId]);
 
   async function handleCreateList(e: React.FormEvent) {
     e.preventDefault();
@@ -50,84 +53,101 @@ export default function WatchlistPage({ familyId }: WatchlistPageProps) {
     }
   }
 
-  async function handleCopyUrl() {
-    if (!token) return;
-    const url = rtdbUrl(token);
-    const ok = await copyToClipboard(url);
-    if (ok) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  // Reši listu (prva postojeća ili nova podrazumevana), pa upiši item.
+  async function addItem(data: WatchlistItemInput, label: string) {
+    let listId = watchlists[0]?.id;
+    if (!listId) {
+      listId = await createWatchlist(familyId, DEFAULT_LIST_NAME);
     }
+    await createWatchlistItem(familyId, listId, data);
+    setAddMsg(`Dodato: ${label}`);
+    setTimeout(() => setAddMsg(null), 3000);
   }
 
-  async function handleRegenerate() {
-    if (!window.confirm('Generisati novi token? Stari URL više neće raditi.')) return;
-    setRegenerating(true);
+  async function handleSelectProduct(p: CatalogProduct) {
+    await addItem(
+      {
+        name: p.name,
+        catalogName: p.name,
+        brand: p.brand ?? undefined,
+        category: p.category ?? undefined,
+        packageSize: pkgLabel(p) || undefined,
+        watchType: 'EXACT_PRODUCT',
+        ean: p.ean,
+        enabled: true,
+        criteriaMode: 'ANY',
+      },
+      p.name
+    );
+  }
+
+  async function handleTrackSearch(query: string) {
+    const includeTerms = normalize(query).split(' ').filter(Boolean);
+    await addItem(
+      {
+        name: query,
+        watchType: 'SEARCH_QUERY',
+        query,
+        enabled: true,
+        criteriaMode: 'ANY',
+        includeTerms,
+      },
+      `„${query}"`
+    );
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setRefreshMsg(null);
     try {
-      const t = await regenerateWatchlistToken(familyId);
-      setToken(t);
+      await triggerPriceRefresh(familyId);
+      setRefreshMsg('Pokrenuto! Cene će se osvežiti za koji minut.');
+    } catch (err) {
+      setRefreshMsg(`Greška: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      setRegenerating(false);
+      setRefreshing(false);
+      setTimeout(() => setRefreshMsg(null), 6000);
     }
   }
-
-  function rtdbUrl(t: string) {
-    return `https://family-shopping-list-ed1d8-default-rtdb.europe-west1.firebasedatabase.app/watchlists/${t}.json`;
-  }
-
-  const apiUrl = token ? rtdbUrl(token) : '';
 
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Praćenje cena</h2>
         <p className="text-sm text-gray-400 mt-0.5">
-          Dodaj proizvode i uslove — ChatGPT će ih naći na Cenoteka.rs
+          Dodaj proizvode i uslove — cene se svako jutro osvežavaju iz zvaničnih cenovnika prodavnica
         </p>
       </div>
 
-      {/* API URL box */}
-      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-blue-900">ChatGPT URL</p>
+      {/* Ručno osvežavanje cena */}
+      {priceRefreshEnabled && (
+        <div className="space-y-1.5">
           <button
-            onClick={handleRegenerate}
-            disabled={regenerating}
-            className="text-xs text-blue-500 hover:text-blue-700 disabled:opacity-40"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="w-full py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {regenerating ? 'Generiše...' : 'Novi token'}
+            <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {refreshing ? 'Pokrećem...' : 'Osveži cene sada'}
           </button>
+          {refreshMsg && (
+            <p className={`text-xs text-center ${refreshMsg.startsWith('Greška') ? 'text-red-600' : 'text-green-600'}`}>
+              {refreshMsg}
+            </p>
+          )}
         </div>
+      )}
 
-        {tokenLoading ? (
-          <div className="h-8 bg-blue-100 rounded-lg animate-pulse" />
-        ) : (
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-xs text-blue-800 bg-white/70 rounded-lg px-3 py-2 break-all">
-              {apiUrl}
-            </code>
-            <button
-              onClick={handleCopyUrl}
-              className="flex-shrink-0 p-2 rounded-lg bg-white/70 hover:bg-white text-blue-600 transition-colors"
-              title="Kopiraj URL"
-            >
-              {copied ? (
-                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              )}
-            </button>
-          </div>
-        )}
-
-        <p className="text-xs text-blue-600">
-          Ovaj URL daje ChatGPT-u uvid u tvoje aktivne proizvode. Čuvaj ga kao lozinku.
-        </p>
-      </div>
+      {/* Search iz kataloga — glavni ulaz za dodavanje */}
+      <CatalogSearch
+        onSelectProduct={handleSelectProduct}
+        onTrackSearch={handleTrackSearch}
+      />
+      {addMsg && (
+        <p className="text-xs text-center text-green-600 font-medium">{addMsg}</p>
+      )}
 
       {/* Watchlists */}
       {loading ? (

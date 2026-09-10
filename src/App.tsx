@@ -12,7 +12,6 @@ import FamiliesPage from './pages/FamiliesPage';
 import JoinPage from './pages/JoinPage';
 import WatchlistRoutePage from './pages/WatchlistRoutePage';
 import DealsRoutePage from './pages/DealsRoutePage';
-import PublicWatchlistPage from './pages/PublicWatchlistPage';
 import PublicDealPage from './pages/PublicDealPage';
 
 function AppRoutes() {
@@ -138,7 +137,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/watchlist/:token" element={<PublicWatchlistPage />} />
         <Route path="/deal" element={<PublicDealPage />} />
         <Route path="/*" element={<AppRoutes />} />
       </Routes>

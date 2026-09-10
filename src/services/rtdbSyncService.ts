@@ -6,7 +6,10 @@ interface WatchlistItemOut {
   id: string;
   listId: string;
   listName: string;
+  watchType: 'EXACT_PRODUCT' | 'SEARCH_QUERY';
   name: string;
+  query?: string;
+  ean?: string;
   brand?: string;
   variant?: string;
   packageSize?: string;
@@ -24,8 +27,7 @@ interface WatchlistItemOut {
 }
 
 export async function publishWatchlistSnapshot(
-  familyId: string,
-  token: string
+  familyId: string
 ): Promise<void> {
   const watchlistsSnap = await getDocs(
     query(
@@ -64,10 +66,13 @@ export async function publishWatchlistSnapshot(
           id: d.id,
           listId: wlDoc.id,
           listName: wl.name,
+          watchType: it.watchType === 'SEARCH_QUERY' ? 'SEARCH_QUERY' : 'EXACT_PRODUCT',
           name: it.name,
           enabled: true,
           criteria,
         };
+        if (it.query) out.query = it.query;
+        if (it.ean) out.ean = it.ean;
         if (it.brand) out.brand = it.brand;
         if (it.variant) out.variant = it.variant;
         if (it.packageSize) out.packageSize = it.packageSize;
@@ -83,11 +88,11 @@ export async function publishWatchlistSnapshot(
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     currency: 'RSD',
-    source: 'cenoteka.rs',
+    source: 'data.gov.rs',
     familyId,
     totalItems: items.length,
     items,
   };
 
-  await set(ref(rtdb, `watchlists/${token}`), snapshot);
+  await set(ref(rtdb, `watchlists/${familyId}`), snapshot);
 }

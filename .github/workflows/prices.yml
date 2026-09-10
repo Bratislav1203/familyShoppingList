@@ -1,0 +1,66 @@
+name: Daily price check
+
+on:
+  schedule:
+    # GitHub cron je u UTC. Belgrade je UTC+1 (zima) / UTC+2 (leto).
+    # Pokrećemo u oba slučaja, a guard korak dozvoljava izvršenje samo kad je
+    # lokalno vreme 07h — tako se izvrši tačno jednom dnevno oko 07:00 i pri DST prelazu.
+    - cron: '0 5 * * *'  # 07:00 CEST (leto)
+    - cron: '0 6 * * *'  # 07:00 CET (zima)
+  workflow_dispatch:      # ručno pokretanje iz GitHub UI (bez guarda)
+  repository_dispatch:    # ručno pokretanje iz aplikacije preko GitHub API (bez guarda)
+    types: [refresh-prices]
+
+jobs:
+  check-prices:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard — samo 07:00 Europe/Belgrade (osim ručnog pokretanja)
+        id: guard
+        run: |
+          HOUR=$(TZ=Europe/Belgrade date +%H)
+          echo "Lokalno vreme (Belgrade): ${HOUR}h"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "repository_dispatch" ] || [ "$HOUR" = "07" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Preskačem — nije 07:00 lokalno."
+          fi
+
+      - name: Setup Node.js
+        if: steps.guard.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        if: steps.guard.outputs.run == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        if: steps.guard.outputs.run == 'true'
+        run: pip install requests
+
+      - name: Install Node deps
+        if: steps.guard.outputs.run == 'true'
+        run: npm ci
+        working-directory: .github/scripts
+
+      - name: Ensure output dir
+        if: steps.guard.outputs.run == 'true'
+        run: mkdir -p out
+
+      - name: Run price check
+        if: steps.guard.outputs.run == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # Prazno za daily (sve porodice); postavljeno pri ručnom pokretanju iz aplikacije (samo ta porodica).
+          FAMILY_ID_FILTER: ${{ github.event.client_payload.family_id }}
+        run: node fetch-prices.js
+        working-directory: .github/scripts

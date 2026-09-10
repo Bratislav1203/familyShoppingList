@@ -3,12 +3,9 @@ import type { Watchlist } from '../types';
 import {
   updateWatchlist,
   deleteWatchlist,
-  createWatchlistItem,
-  type WatchlistItemInput,
 } from '../services/watchlistService';
 import { useWatchlistItems } from '../hooks/useWatchlistItems';
 import WatchlistItemRow from './WatchlistItemRow';
-import WatchlistItemForm from './WatchlistItemForm';
 
 interface WatchlistCardProps {
   familyId: string;
@@ -17,7 +14,6 @@ interface WatchlistCardProps {
 
 export default function WatchlistCard({ familyId, watchlist }: WatchlistCardProps) {
   const [expanded, setExpanded] = useState(true);
-  const [addingItem, setAddingItem] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(watchlist.name);
   const [deleting, setDeleting] = useState(false);
@@ -43,16 +39,6 @@ export default function WatchlistCard({ familyId, watchlist }: WatchlistCardProp
       await deleteWatchlist(familyId, watchlist.id);
     } finally {
       setDeleting(false);
-    }
-  }
-
-  async function handleAddItem(data: WatchlistItemInput) {
-    try {
-      await createWatchlistItem(familyId, watchlist.id, data);
-      setAddingItem(false);
-    } catch (err) {
-      console.error('handleAddItem error:', err);
-      throw err;
     }
   }
 
@@ -134,7 +120,9 @@ export default function WatchlistCard({ familyId, watchlist }: WatchlistCardProp
       {expanded && (
         <div className="p-3 space-y-2">
           {items.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-3">Nema proizvoda u listi</p>
+            <p className="text-sm text-gray-400 text-center py-3">
+              Nema proizvoda — dodaj ih pretragom na vrhu
+            </p>
           )}
           {items.map((item) => (
             <WatchlistItemRow
@@ -144,24 +132,7 @@ export default function WatchlistCard({ familyId, watchlist }: WatchlistCardProp
               item={item}
             />
           ))}
-
-          <button
-            onClick={() => setAddingItem(true)}
-            className="w-full py-2.5 border border-dashed border-blue-200 rounded-xl text-blue-600 text-sm font-medium hover:bg-blue-50 transition-colors flex items-center justify-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Dodaj proizvod
-          </button>
         </div>
-      )}
-
-      {addingItem && (
-        <WatchlistItemForm
-          onSave={handleAddItem}
-          onCancel={() => setAddingItem(false)}
-        />
       )}
     </div>
   );

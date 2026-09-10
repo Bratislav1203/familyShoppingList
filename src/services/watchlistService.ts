@@ -7,11 +7,9 @@ import {
   deleteDoc,
   getDocs,
   serverTimestamp,
-  getDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { generateToken } from '../utils/generateToken';
-import type { Watchlist, WatchlistItem, CriteriaMode } from '../types';
+import type { Watchlist, WatchlistItem, CriteriaMode, WatchType } from '../types';
 
 // ─── Watchlists ───────────────────────────────────────────────────────────────
 
@@ -88,6 +86,11 @@ export interface WatchlistItemInput {
   includeTerms?: string[];
   excludeTerms?: string[];
   notes?: string;
+  watchType?: WatchType;
+  query?: string;
+  ean?: string;
+  catalogName?: string;
+  category?: string;
 }
 
 export async function createWatchlistItem(
@@ -134,26 +137,3 @@ export async function deleteWatchlistItem(
   );
 }
 
-// ─── Token ────────────────────────────────────────────────────────────────────
-
-export async function ensureWatchlistToken(familyId: string): Promise<string> {
-  const familyRef = doc(db, 'families', familyId);
-  const snap = await getDoc(familyRef);
-  if (!snap.exists()) throw new Error('Porodica nije pronađena');
-
-  const existing = snap.data().watchlistToken as string | undefined;
-  if (existing) return existing;
-
-  const token = generateToken(32);
-  await updateDoc(familyRef, { watchlistToken: token, updatedAt: serverTimestamp() });
-  return token;
-}
-
-export async function regenerateWatchlistToken(familyId: string): Promise<string> {
-  const token = generateToken(32);
-  await updateDoc(doc(db, 'families', familyId), {
-    watchlistToken: token,
-    updatedAt: serverTimestamp(),
-  });
-  return token;
-}
