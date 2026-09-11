@@ -111,6 +111,19 @@ export function buildOffer(row, pkg) {
   const regularPrice = onSale ? regular : null;
   const discountPercent = onSale ? Math.round(((regular - discount) / regular) * 100) : null;
 
+  // Odbaci veleprodajne/transportne pakete pogrešno deklarisane kao komad.
+  // Ako izvorni unit_price (RSD po jedinici) implicira mnogo veću količinu od
+  // deklarisanog pakovanja (npr. Metro: 2014 RSD / 254 RSD/l = 7.9 l za "0.33l"),
+  // cena se ne odnosi na ovaj proizvod — preskoči red.
+  const srcUnitPrice = toNumber(row.unit_price);
+  if (
+    pkg && pkg.value != null && pkg.value > 0 &&
+    srcUnitPrice != null && srcUnitPrice > 0
+  ) {
+    const impliedQty = currentPrice / srcUnitPrice;
+    if (impliedQty > pkg.value * 2) return null;
+  }
+
   let unitPrice = null;
   let unitPriceUnit = null;
   // Sami računamo unit price iz pakovanja — kolona `unit` u državnom CSV-u je
