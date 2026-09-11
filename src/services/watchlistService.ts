@@ -89,6 +89,8 @@ export interface WatchlistItemInput {
   watchType?: WatchType;
   query?: string;
   ean?: string;
+  eans?: string[];
+  groupKey?: string;
   catalogName?: string;
   category?: string;
 }

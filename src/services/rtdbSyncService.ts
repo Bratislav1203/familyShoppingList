@@ -10,6 +10,7 @@ interface WatchlistItemOut {
   name: string;
   query?: string;
   ean?: string;
+  eans?: string[];
   brand?: string;
   variant?: string;
   packageSize?: string;
@@ -73,6 +74,7 @@ export async function publishWatchlistSnapshot(
         };
         if (it.query) out.query = it.query;
         if (it.ean) out.ean = it.ean;
+        if (Array.isArray(it.eans) && it.eans.length) out.eans = it.eans;
         if (it.brand) out.brand = it.brand;
         if (it.variant) out.variant = it.variant;
         if (it.packageSize) out.packageSize = it.packageSize;

@@ -267,6 +267,81 @@ def parse_package(name: str, unit: str) -> Tuple[Optional[float], Optional[str]]
     return None, None
 
 
+def _norm_tokens(s: str) -> str:
+    """Lowercase, strip diacritics, collapse to single-spaced alnum tokens."""
+    s = (s or "").lower()
+    s = "".join(
+        c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
+    )
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return s.strip()
+
+
+# Known brands we can pull out of messy names so different retailer spellings
+# ("COCA-COLA", "Coca Cola Zero", "COCA COLA") collapse to one brand token.
+_BRAND_ALIASES = {
+    "coca cola": "cocacola",
+    "cocacola": "cocacola",
+    "coca kola": "cocacola",
+}
+
+
+def _brand_token(name: str, brand: str) -> str:
+    hay = f"{_norm_tokens(brand)} {_norm_tokens(name)}"
+    for needle, canon in _BRAND_ALIASES.items():
+        if needle in hay:
+            return canon
+    b = _norm_tokens(brand)
+    if b and b not in {"rm nije definisana", "nije definisana", "n a", "na", "brend"}:
+        return b.replace(" ", "")
+    # No usable brand — fall back to the first meaningful name token.
+    toks = [t for t in _norm_tokens(name).split() if not t.isdigit()]
+    return toks[0] if toks else ""
+
+
+def _container_token(name: str) -> str:
+    """Packaging material — kept separate so can/glass/PET never merge."""
+    t = _norm_tokens(name)
+    if re.search(r"\b(limenka|limenke|can)\b", t):
+        return "can"
+    if re.search(r"\b(staklo|stakl|glass)\b", t):
+        return "glass"
+    if re.search(r"\bpet\b", t):
+        return "pet"
+    return "none"
+
+
+def _variant_token(name: str) -> str:
+    """Flavor / promo markers that must NOT collapse into the plain product."""
+    t = _norm_tokens(name)
+    parts = []
+    if re.search(r"\blemon\b", t):
+        parts.append("lemon")
+    if re.search(r"\blime\b", t):
+        parts.append("lime")
+    if re.search(r"\bcherry\b|\bvi[sš]nj", t):
+        parts.append("cherry")
+    if re.search(r"\bvanilla\b|\bvanil", t):
+        parts.append("vanilla")
+    if re.search(r"\bmultipack\b|\d+\s*[x×]\s*\d", t):
+        parts.append("multipack")
+    if re.search(r"\b3\s*\+\s*1\b|\b2\s*\+\s*1\b|\bgratis\b|\bgr\b", t):
+        parts.append("promo")
+    return "-".join(parts) if parts else "std"
+
+
+def product_key(name: str, brand: str, pkg_value, pkg_unit) -> str:
+    """
+    Offline grouping key: same physical product across retailers/EANs.
+    brand | package | container | variant. Computed once at build time and
+    frozen into catalog.json — the running app never recomputes it.
+    """
+    b = _brand_token(name, brand)
+    pv = "" if pkg_value is None else f"{pkg_value:g}"
+    pu = pkg_unit or ""
+    return f"{b}|{pv}|{pu}|{_container_token(name)}|{_variant_token(name)}"
+
+
 def quality_score(name: str, brand: str, category: str, unit: str) -> int:
     score = 0
     lname = name.lower()
@@ -636,6 +711,7 @@ def build(mode: str, tracked_file: Optional[Path], out_dir: Path) -> int:
                 "category": p.canonical_category or None,
                 "packageValue": pkg_value,
                 "packageUnit": pkg_unit,
+                "groupKey": product_key(name, p.canonical_brand, pkg_value, pkg_unit),
             })
 
         catalog_path = out_dir / "catalog.json"

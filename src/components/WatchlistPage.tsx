@@ -7,7 +7,7 @@ import {
 } from '../services/watchlistService';
 import { publishWatchlistSnapshot } from '../services/rtdbSyncService';
 import { triggerPriceRefresh, priceRefreshEnabled } from '../services/priceRefreshService';
-import { normalize } from '../services/catalogService';
+import { normalize, loadCatalog } from '../services/catalogService';
 import WatchlistCard from './WatchlistCard';
 import CatalogSearch from './CatalogSearch';
 import type { CatalogProduct } from '../types';
@@ -68,6 +68,15 @@ export default function WatchlistPage({ familyId }: WatchlistPageProps) {
   }
 
   async function handleSelectProduct(p: CatalogProduct) {
+    // Isti proizvod se kod raznih lanaca vodi pod raznim EAN-om — prati sve iz grupe.
+    let eans = [p.ean];
+    if (p.groupKey) {
+      const catalog = await loadCatalog();
+      const group = catalog
+        .filter((c) => c.groupKey === p.groupKey)
+        .map((c) => c.ean);
+      if (group.length > 0) eans = [...new Set([p.ean, ...group])];
+    }
     await addItem(
       {
         name: p.name,
@@ -77,6 +86,8 @@ export default function WatchlistPage({ familyId }: WatchlistPageProps) {
         packageSize: pkgLabel(p) || undefined,
         watchType: 'EXACT_PRODUCT',
         ean: p.ean,
+        eans,
+        groupKey: p.groupKey,
         enabled: true,
         criteriaMode: 'ANY',
       },

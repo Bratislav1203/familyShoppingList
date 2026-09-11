@@ -70,12 +70,17 @@ function loadCatalog() {
 
 function resolveEans(item, catalog) {
   const byEan = new Map(); // ean -> catalogProduct
+  const catalogByEan = (ean) => catalog.find((c) => c.ean === ean);
   if (item.watchType === 'SEARCH_QUERY') {
     const q = item.query || item.name;
     for (const p of searchCatalog(catalog, q, 80)) byEan.set(p.ean, p);
+  } else if (Array.isArray(item.eans) && item.eans.length > 0) {
+    // EXACT_PRODUCT sa grupom: isti proizvod kroz sve lance/EAN-ove.
+    for (const ean of item.eans) {
+      byEan.set(ean, catalogByEan(ean) || { ean, name: item.name });
+    }
   } else if (item.ean) {
-    const p = catalog.find((c) => c.ean === item.ean);
-    byEan.set(item.ean, p || { ean: item.ean, name: item.name });
+    byEan.set(item.ean, catalogByEan(item.ean) || { ean: item.ean, name: item.name });
   } else {
     // Legacy item bez ean/query — tretiraj name kao pretragu.
     for (const p of searchCatalog(catalog, item.name, 40)) byEan.set(p.ean, p);

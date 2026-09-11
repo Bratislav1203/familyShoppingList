@@ -91,6 +91,8 @@ export interface WatchlistItem {
   watchType?: WatchType;
   query?: string;        // originalni search string (SEARCH_QUERY)
   ean?: string;          // EAN iz kataloga (EXACT_PRODUCT)
+  eans?: string[];       // svi EAN-ovi iste grupe (isti proizvod, razni lanci)
+  groupKey?: string;     // ključ grupe iz kataloga
   catalogName?: string;  // kanonsko ime iz kataloga
   category?: string;
   createdAt?: unknown;
@@ -104,6 +106,7 @@ export interface CatalogProduct {
   category?: string | null;
   packageValue?: number | null;
   packageUnit?: string | null; // 'kom' | 'kg' | 'l'
+  groupKey?: string;           // isti proizvod kroz razne EAN-ove/prodavnice
   retailers?: string[];
 }
 
