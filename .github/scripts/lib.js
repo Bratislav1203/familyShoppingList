@@ -79,6 +79,25 @@ export function toNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// Državni CSV nosi dva tipa za istu prodavnicu: VAZECI_CENOVNIK (današnji) i
+// MESECNI_PRESEK (snimak od 1. u mesecu, star). Za svaku prodavnicu zadrži samo
+// važeći; padni na presek samo ako lanac nema važeći. Time cene prate ono što
+// prodavnica trenutno naplaćuje (poklapa se sa Cenotekom).
+export function preferCurrentPriceList(rows) {
+  const isCurrent = (r) => (r.price_list_type || '').toUpperCase().includes('VAZECI');
+  const byStore = new Map(); // retailer -> { current: [], monthly: [] }
+  for (const r of rows) {
+    const store = r.retailer || '';
+    if (!byStore.has(store)) byStore.set(store, { current: [], monthly: [] });
+    (isCurrent(r) ? byStore.get(store).current : byStore.get(store).monthly).push(r);
+  }
+  const out = [];
+  for (const { current, monthly } of byStore.values()) {
+    out.push(...(current.length > 0 ? current : monthly));
+  }
+  return out;
+}
+
 // Iz reda tracked_prices.csv + info o pakovanju izvodi cenovnu ponudu.
 export function buildOffer(row, pkg) {
   const regular = toNumber(row.regular_price);
@@ -94,14 +113,10 @@ export function buildOffer(row, pkg) {
 
   let unitPrice = null;
   let unitPriceUnit = null;
-  // Izvorni unit_price iz cenovnika je pouzdaniji (naročito kad pakovanje ne parsira).
-  const srcUnitPrice = toNumber(row.unit_price);
-  const srcUnit = (row.unit || '').trim().toLowerCase();
-  const srcUnitMap = { l: 'l', lit: 'l', kg: 'kg', kom: 'kom', 'kom.': 'kom', komada: 'kom' };
-  if (srcUnitPrice != null && srcUnitPrice > 0 && srcUnitMap[srcUnit]) {
-    unitPrice = srcUnitPrice;
-    unitPriceUnit = `RSD/${srcUnitMap[srcUnit]}`;
-  } else if (pkg && pkg.value != null && pkg.value > 0 && pkg.unit) {
+  // Sami računamo unit price iz pakovanja — kolona `unit` u državnom CSV-u je
+  // nekonzistentna (IDEA/Aman šalju 'KOM' za piće, Delhaize 'lit'), pa poređenje
+  // "najbolja po jedinici" ispadne besmisleno ako joj verujemo.
+  if (pkg && pkg.value != null && pkg.value > 0 && pkg.unit) {
     unitPrice = Math.round((currentPrice / pkg.value) * 100) / 100;
     unitPriceUnit = `RSD/${pkg.unit}`;
   }

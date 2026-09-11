@@ -9,6 +9,7 @@ import {
   parsePackage,
   buildOffer,
   matchesItem,
+  preferCurrentPriceList,
 } from './lib.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -221,7 +222,9 @@ async function main() {
     );
 
     for (const [ean, product] of eans) {
-      const priceRows = pricesByEan.get(ean) || [];
+      const allRows = pricesByEan.get(ean) || [];
+      // Zadrži samo VAZECI_CENOVNIK po prodavnici (fallback na mesečni presek).
+      const priceRows = preferCurrentPriceList(allRows);
       for (const row of priceRows) {
         const productName = product?.name || row.merchant_format || item.name;
         const pkg =
