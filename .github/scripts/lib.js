@@ -27,7 +27,20 @@ export function searchCatalog(catalog, query, limit = 60) {
 export function parsePackage(name, unitHint) {
   const text = (name || '').toLowerCase();
 
-  let m = text.match(/(\d+)\s*[x×]\s*(\d+)\b/);
+  // Multipack sa jedinicom: "4x0.33L" -> 1.32 l, "6x1.5L" -> 9 l, "8x500ml" -> 4 l.
+  let m = text.match(/(\d+)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(ml|l|kg|g)\b/);
+  if (m) {
+    const count = Number(m[1]);
+    const size = Number(m[2].replace(',', '.'));
+    const u = m[3];
+    if (u === 'ml') return { value: round4((count * size) / 1000), unit: 'l' };
+    if (u === 'l') return { value: round4(count * size), unit: 'l' };
+    if (u === 'g') return { value: round4((count * size) / 1000), unit: 'kg' };
+    return { value: round4(count * size), unit: 'kg' }; // kg
+  }
+
+  // Multipack bez jedinice: "3x100" -> 300 kom.
+  m = text.match(/(\d+)\s*[x×]\s*(\d+)\b/);
   if (m) return { value: Number(m[1]) * Number(m[2]), unit: 'kom' };
 
   m = text.match(/(\d+)\s*\/\s*1\b/);
@@ -81,7 +94,14 @@ export function buildOffer(row, pkg) {
 
   let unitPrice = null;
   let unitPriceUnit = null;
-  if (pkg && pkg.value != null && pkg.value > 0 && pkg.unit) {
+  // Izvorni unit_price iz cenovnika je pouzdaniji (naročito kad pakovanje ne parsira).
+  const srcUnitPrice = toNumber(row.unit_price);
+  const srcUnit = (row.unit || '').trim().toLowerCase();
+  const srcUnitMap = { l: 'l', lit: 'l', kg: 'kg', kom: 'kom', 'kom.': 'kom', komada: 'kom' };
+  if (srcUnitPrice != null && srcUnitPrice > 0 && srcUnitMap[srcUnit]) {
+    unitPrice = srcUnitPrice;
+    unitPriceUnit = `RSD/${srcUnitMap[srcUnit]}`;
+  } else if (pkg && pkg.value != null && pkg.value > 0 && pkg.unit) {
     unitPrice = Math.round((currentPrice / pkg.value) * 100) / 100;
     unitPriceUnit = `RSD/${pkg.unit}`;
   }
@@ -96,6 +116,8 @@ export function buildOffer(row, pkg) {
     unitPrice,
     unitPriceUnit,
     validUntil: row.discount_end || null,
+    priceListDate: row.price_list_date || null,
+    priceListType: row.price_list_type || null,
   };
 }
 

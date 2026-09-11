@@ -211,6 +211,20 @@ def parse_package(name: str, unit: str) -> Tuple[Optional[float], Optional[str]]
 
     # ── Count / pieces ──────────────────────────────────────────────────────
     # "30 kom", "30 komada", "60 kapsula", "20/1", "100/1", "2x60"
+    # Multipack sa jedinicom: "4x0.33L" -> 1.32 l, "8x500ml" -> 4 l.
+    m = re.search(r"(\d+)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(ml|l|kg|g)\b", text)
+    if m:
+        count = int(m.group(1))
+        size = float(m.group(2).replace(",", "."))
+        u = m.group(3)
+        if u == "ml":
+            return round(count * size / 1000.0, 4), "l"
+        if u == "l":
+            return round(count * size, 4), "l"
+        if u == "g":
+            return round(count * size / 1000.0, 4), "kg"
+        return round(count * size, 4), "kg"  # kg
+
     m = re.search(r"(\d+)\s*[x×]\s*(\d+)\b", text)  # 2x60 -> 120
     if m:
         return float(int(m.group(1)) * int(m.group(2))), "kom"

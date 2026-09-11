@@ -96,7 +96,11 @@ function DealRow({ deal, badges }: { deal: Deal; badges: string[] }) {
         {deal.packageValue != null && deal.packageUnit && (
           <span>{deal.packageValue} {deal.packageUnit}</span>
         )}
+        {deal.priceListType && deal.priceListType.toUpperCase().includes('AKCIJ') && (
+          <span className="text-orange-600 font-medium">Akcija</span>
+        )}
         {deal.validUntil && <span>Važi do: {deal.validUntil}</span>}
+        {deal.priceListDate && <span>Cenovnik: {deal.priceListDate}</span>}
         {(deal.fetchedAt ?? deal.foundAt) != null && (
           <span>Osveženo: {formatDateTime(deal.fetchedAt ?? deal.foundAt)}</span>
         )}

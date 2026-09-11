@@ -247,6 +247,8 @@ async function main() {
           unitPrice: offer.unitPrice,
           unitPriceUnit: offer.unitPriceUnit,
           validUntil: offer.validUntil,
+          priceListDate: offer.priceListDate,
+          priceListType: offer.priceListType,
         };
 
         const prev = bestByStore.get(offer.store);

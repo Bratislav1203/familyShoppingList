@@ -124,6 +124,8 @@ export interface Deal {
   unitPrice?: number | null;
   unitPriceUnit?: string | null; // 'RSD/kom' | 'RSD/kg' | 'RSD/l'
   validUntil?: string | null;
+  priceListDate?: string | null;  // datum važećeg cenovnika
+  priceListType?: string | null;  // npr. 'VAZECI CENOVNIK' | 'AKCIJA'
   sourceUrl?: string | null;
   fetchRunId?: string;
   fetchedAt?: unknown;
