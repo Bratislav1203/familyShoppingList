@@ -54,5 +54,17 @@ export function searchCatalog(
   }
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, limit).map((s) => s.p);
+
+  // Jedan red po grupi: isti proizvod kroz razne EAN-ove/prodavnice spaja se u
+  // jedan rezultat (najbolje rangiran u grupi). Bez groupKey → ostaje po EAN-u.
+  const seen = new Set<string>();
+  const deduped: CatalogProduct[] = [];
+  for (const { p } of scored) {
+    const key = p.groupKey || `ean:${p.ean}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(p);
+    if (deduped.length >= limit) break;
+  }
+  return deduped;
 }
