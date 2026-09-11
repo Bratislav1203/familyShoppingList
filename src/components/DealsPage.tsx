@@ -154,7 +154,7 @@ function DealGroup({ groupName, deals }: { groupName: string; deals: Deal[] }) {
           <div className="text-left min-w-0">
             <p className="font-semibold text-gray-900 text-sm truncate">{groupName}</p>
             <p className="text-xs text-gray-400 mt-0.5">
-              {current.length} {current.length === 1 ? 'ponuda' : 'ponude'} · po prodavnici
+              {current.length} {current.length === 1 ? 'cena' : 'cena'}
               {best && <> · od {fmtPrice(best.price)} RSD</>}
             </p>
           </div>

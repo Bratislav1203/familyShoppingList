@@ -212,9 +212,11 @@ async function main() {
   // 3) Za svaki (porodica, item) sastavi ponude, matchuj, upiši.
   let totalSaved = 0;
   for (const { familyId, itemId, item, eans } of plan) {
-    // Najjeftinija ponuda po prodavnici (isti EAN se u cenovniku javlja
-    // više puta — po objektu/formatu prodavnice; nama treba jedna po lancu).
-    const bestByStore = new Map(); // store -> deal
+    // Najjeftinija ponuda po (proizvod × prodavnica). Isti EAN se u cenovniku
+    // javlja više puta (po objektu/formatu prodavnice) — dedupujemo na jednu po
+    // lancu. Ključ uključuje EAN da bi SEARCH_QUERY zadržao SVA pakovanja
+    // (npr. 0.33l i 4x0.33l u istoj prodavnici ostaju kao dve ponude).
+    const bestByProductStore = new Map(); // `${ean} ${store}` -> deal
 
     const eansWithPrice = [...eans.keys()].filter((e) => (pricesByEan.get(e) || []).length > 0);
     console.log(
@@ -254,12 +256,13 @@ async function main() {
           priceListType: offer.priceListType,
         };
 
-        const prev = bestByStore.get(offer.store);
-        if (!prev || deal.price < prev.price) bestByStore.set(offer.store, deal);
+        const key = `${ean} ${offer.store}`;
+        const prev = bestByProductStore.get(key);
+        if (!prev || deal.price < prev.price) bestByProductStore.set(key, deal);
       }
     }
 
-    const deals = [...bestByStore.values()];
+    const deals = [...bestByProductStore.values()];
 
     // Očisti undefined vrednosti (Firestore ih ne prima).
     const clean = deals.map((d) =>
