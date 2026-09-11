@@ -68,46 +68,56 @@ export default function WatchlistPage({ familyId }: WatchlistPageProps) {
   }
 
   async function handleSelectProduct(p: CatalogProduct) {
-    // Isti proizvod se kod raznih lanaca vodi pod raznim EAN-om — prati sve iz grupe.
-    let eans = [p.ean];
-    if (p.groupKey) {
-      const catalog = await loadCatalog();
-      const group = catalog
-        .filter((c) => c.groupKey === p.groupKey)
-        .map((c) => c.ean);
-      if (group.length > 0) eans = [...new Set([p.ean, ...group])];
+    try {
+      // Isti proizvod se kod raznih lanaca vodi pod raznim EAN-om — prati sve iz grupe.
+      let eans = [p.ean];
+      if (p.groupKey) {
+        const catalog = await loadCatalog();
+        const group = catalog
+          .filter((c) => c.groupKey === p.groupKey)
+          .map((c) => c.ean);
+        if (group.length > 0) eans = [...new Set([p.ean, ...group])];
+      }
+      await addItem(
+        {
+          name: p.name,
+          catalogName: p.name,
+          brand: p.brand ?? undefined,
+          category: p.category ?? undefined,
+          packageSize: pkgLabel(p) || undefined,
+          watchType: 'EXACT_PRODUCT',
+          ean: p.ean,
+          eans,
+          groupKey: p.groupKey,
+          enabled: true,
+          criteriaMode: 'ANY',
+        },
+        p.name
+      );
+    } catch (err) {
+      console.error('handleSelectProduct failed:', err);
+      alert(`Greška pri dodavanju: ${err instanceof Error ? err.message : String(err)}`);
     }
-    await addItem(
-      {
-        name: p.name,
-        catalogName: p.name,
-        brand: p.brand ?? undefined,
-        category: p.category ?? undefined,
-        packageSize: pkgLabel(p) || undefined,
-        watchType: 'EXACT_PRODUCT',
-        ean: p.ean,
-        eans,
-        groupKey: p.groupKey,
-        enabled: true,
-        criteriaMode: 'ANY',
-      },
-      p.name
-    );
   }
 
   async function handleTrackSearch(query: string) {
-    const includeTerms = normalize(query).split(' ').filter(Boolean);
-    await addItem(
-      {
-        name: query,
-        watchType: 'SEARCH_QUERY',
-        query,
-        enabled: true,
-        criteriaMode: 'ANY',
-        includeTerms,
-      },
-      `„${query}"`
-    );
+    try {
+      const includeTerms = normalize(query).split(' ').filter(Boolean);
+      await addItem(
+        {
+          name: query,
+          watchType: 'SEARCH_QUERY',
+          query,
+          enabled: true,
+          criteriaMode: 'ANY',
+          includeTerms,
+        },
+        `„${query}"`
+      );
+    } catch (err) {
+      console.error('handleTrackSearch failed:', err);
+      alert(`Greška pri praćenju pretrage: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   async function handleRefresh() {
