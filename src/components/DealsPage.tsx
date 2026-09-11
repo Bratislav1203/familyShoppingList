@@ -115,18 +115,17 @@ function DealRow({ deal, badges }: { deal: Deal; badges: string[] }) {
   );
 }
 
-function DealGroup({ groupName, deals }: { groupName: string; deals: Deal[] }) {
-  const [expanded, setExpanded] = useState(false);
+// Jedan konkretan proizvod (isti groupKey) sa svim cenama po prodavnici.
+function DealSubGroup({ deals, defaultOpen }: { deals: Deal[]; defaultOpen: boolean }) {
+  const [expanded, setExpanded] = useState(defaultOpen);
 
-  const current = latestRunDeals(deals);
-  const sorted = [...current].sort((a, b) => a.price - b.price);
+  const sorted = [...deals].sort((a, b) => a.price - b.price);
 
   // Najniža ukupna cena i najbolja cena po jedinici (unutar iste jedinice).
   const cheapestId = sorted.length > 0 ? sorted[0].id : null;
   let bestUnitId: string | null = null;
   {
-    const withUnit = current.filter((d) => d.unitPrice != null && d.unitPriceUnit);
-    // Poredimo unit price samo unutar dominantne jedinice (npr. sve RSD/kom).
+    const withUnit = deals.filter((d) => d.unitPrice != null && d.unitPriceUnit);
     const byUnit = new Map<string, Deal[]>();
     for (const d of withUnit) {
       const u = d.unitPriceUnit!;
@@ -143,6 +142,61 @@ function DealGroup({ groupName, deals }: { groupName: string; deals: Deal[] }) {
 
   const best = sorted[0];
   const showBestUnit = bestUnitId != null && bestUnitId !== cheapestId;
+  const label = best?.itemName ?? '';
+
+  return (
+    <div className="bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-100 transition-colors"
+      >
+        <div className="text-left min-w-0">
+          <p className="text-sm font-medium text-gray-800 truncate">{label}</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {sorted.length} {sorted.length === 1 ? 'cena' : 'cena'}
+            {best && <> · od {fmtPrice(best.price)} RSD</>}
+          </p>
+        </div>
+        <svg
+          className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="px-2 pb-2 space-y-2">
+          {sorted.map((deal) => {
+            const badges: string[] = [];
+            if (deal.id === cheapestId) badges.push('Najniža cena');
+            if (showBestUnit && deal.id === bestUnitId) badges.push('Najbolja po jedinici');
+            return <DealRow key={deal.id} deal={deal} badges={badges} />;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DealGroup({ groupName, deals }: { groupName: string; deals: Deal[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const current = latestRunDeals(deals);
+
+  // Podeli po konkretnom proizvodu (groupKey); bez groupKey → po EAN-u.
+  const byKey = new Map<string, Deal[]>();
+  for (const d of current) {
+    const key = d.groupKey ?? `ean:${d.catalogEan ?? d.id}`;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(d);
+  }
+  const subgroups = [...byKey.values()]
+    .map((ds) => ({ deals: ds, min: Math.min(...ds.map((d) => d.price)) }))
+    .sort((a, b) => a.min - b.min);
+
+  const overallMin = subgroups.length > 0 ? subgroups[0].min : null;
+  const singleSub = subgroups.length === 1;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -154,8 +208,8 @@ function DealGroup({ groupName, deals }: { groupName: string; deals: Deal[] }) {
           <div className="text-left min-w-0">
             <p className="font-semibold text-gray-900 text-sm truncate">{groupName}</p>
             <p className="text-xs text-gray-400 mt-0.5">
-              {current.length} {current.length === 1 ? 'cena' : 'cena'}
-              {best && <> · od {fmtPrice(best.price)} RSD</>}
+              {subgroups.length} {subgroups.length === 1 ? 'proizvod' : 'proizvoda'} · {current.length} cena
+              {overallMin != null && <> · od {fmtPrice(overallMin)} RSD</>}
             </p>
           </div>
         </div>
@@ -169,12 +223,13 @@ function DealGroup({ groupName, deals }: { groupName: string; deals: Deal[] }) {
 
       {expanded && (
         <div className="px-3 pb-3 space-y-2">
-          {sorted.map((deal) => {
-            const badges: string[] = [];
-            if (deal.id === cheapestId) badges.push('Najniža cena');
-            if (showBestUnit && deal.id === bestUnitId) badges.push('Najbolja po jedinici');
-            return <DealRow key={deal.id} deal={deal} badges={badges} />;
-          })}
+          {subgroups.map((sg) => (
+            <DealSubGroup
+              key={sg.deals[0].groupKey ?? sg.deals[0].id}
+              deals={sg.deals}
+              defaultOpen={singleSub}
+            />
+          ))}
         </div>
       )}
     </div>

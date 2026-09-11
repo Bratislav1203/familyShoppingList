@@ -117,6 +117,7 @@ export interface Deal {
   catalogEan?: string;
   itemName: string;
   groupName?: string;
+  groupKey?: string;
   brand?: string;
   store: string;
   price: number;                 // trenutna cena koju korisnik plaća

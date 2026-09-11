@@ -247,6 +247,7 @@ async function main() {
           catalogEan: ean,
           itemName: productName,
           groupName: item.name,
+          groupKey: product?.groupKey ?? undefined,
           brand: product?.brand ?? undefined,
           store: offer.store,
           price: offer.price,
